@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token, decode_token, get_jwt
 from flask_jwt_extended.exceptions import JWTExtendedException
+from flask_jwt_extended import verify_jwt_in_request
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -11,6 +12,7 @@ import logging
 import uuid
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash
+import functools
 
 # Import database module using namespace
 import database
@@ -19,7 +21,9 @@ import slack_message
 import startup_notifier
 
 # Load environment variables from .env file
-load_dotenv()
+# Explicitly load the .env file from the directory of main.py
+env_path = os.path.join(os.path.dirname(__file__), '..', 'zapi', '.env')
+load_dotenv(dotenv_path=os.path.abspath(env_path))
 
 # Configure logging
 logging.basicConfig(
@@ -374,6 +378,30 @@ def log_request_info():
         # end users do strange stuff
         # add robust tolerance where we reasonably can
         request.data = {}
+
+# Logging using decorated function
+def log_request(success=True, message=None):
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            user_name = None
+            user_id = None
+            try:
+                # This doesn't raise an error if no token is provided
+                verify_jwt_in_request(optional=True)
+                user_name = get_jwt_identity()
+            except Exception as e:
+                logger.warning(f"Could not get JWT identity: {str(e)}")
+
+            if user_name:
+                user = database.get_user_by_username(user_name)
+                if user:
+                    user_id = user['id']
+            endpoint = request.path
+            database.log_api_usage(endpoint, user_id, request, success, message)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # --- Admin Routes ---
 

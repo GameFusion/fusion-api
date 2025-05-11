@@ -1,0 +1,11 @@
+[Unit]
+Description=FUSION-API Notifier Service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+WorkingDirectory=/root/fusion-api
+ExecStart=/root/fusion-api/venv/bin/python /root/fusion-api/app_notifier.py
+
+[Install]
+WantedBy=multi-user.target
