@@ -44,6 +44,8 @@ key_path = os.environ.get('SSL_KEY_PATH')
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 jwt = JWTManager()  # global instance for decorators
 
+verbose_logging = os.environ.get('VERBOSE_LOGGING', 'false').lower() == 'true'
+
 # --- Initialization for embedding ---
 def create_api(app: Flask) -> Flask:
     """Initialize the API inside an existing Flask app."""
@@ -350,18 +352,24 @@ def logout():
 # Enhance your logging
 @api_v1.before_request
 def log_request_info():
-    logger.info(f"Log Request Info: {request.method} {request.path}")
+    
+    if verbose_logging:
+        logger.info(f"Log Request Info: {request.method} {request.path}")
     if 'Authorization' in request.headers:
         auth_header = request.headers['Authorization']
-        logger.info(f"Auth header present: {auth_header[:30]}...")
+
+        if verbose_logging:
+            logger.info(f"Auth header present: {auth_header[:30]}...")
 
         # Try to manually decode the token
         if auth_header.startswith('Bearer '):
             token = auth_header[7:]  # Remove 'Bearer ' prefix
-            print("token", token, flush=True)
+            if verbose_logging:
+                print("token", token, flush=True)
             try:
                 decoded = decode_token(token)
-                logger.info(f"Token decoded successfully: {decoded}")
+                if verbose_logging:
+                    logger.info(f"Token decoded successfully: {decoded}")
             except JWTExtendedException as e:
                 logger.error(f"JWT decode error: {str(e)}")
             except Exception as e:
