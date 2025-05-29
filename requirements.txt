@@ -3,3 +3,5 @@ slack_sdk
 dotenv
 psycopg2-binary
 requests
+werkzeug
+jwt
